@@ -1,22 +1,89 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle, CreditCard, Home, Truck, MapPin, Clock, Calendar } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
+import { stripePromise, createPaymentIntent } from '../lib/stripe';
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
+
+// Payment Form Component
+const PaymentForm = ({ clientSecret }: { clientSecret: string }) => {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [error, setError] = useState<string>('');
+  const [processing, setProcessing] = useState(false);
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (!stripe || !elements) {
+      return;
+    }
+
+    setProcessing(true);
+
+    const { error: stripeError } = await stripe.confirmPayment({
+      elements,
+      confirmParams: {
+        return_url: `${window.location.origin}/order-confirmation`,
+      },
+    });
+
+    if (stripeError) {
+      setError(stripeError.message || 'An error occurred');
+      setProcessing(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <PaymentElement />
+      {error && <div className="text-red-600 mt-2">{error}</div>}
+      <button
+        type="submit"
+        disabled={!stripe || processing}
+        className={`w-full mt-4 py-3 bg-green-700 hover:bg-green-800 text-white rounded-full flex items-center justify-center space-x-2 transition-colors ${
+          processing ? 'opacity-70 cursor-not-allowed' : ''
+        }`}
+      >
+        {processing ? 'Processing...' : 'Pay Now'}
+      </button>
+    </form>
+  );
+};
 
 const Checkout: React.FC = () => {
   const { cartItems, cartTotal, cartCalories, clearCart } = useCart();
+  const { profile, updateProfile } = useAuth();
   const navigate = useNavigate();
   const [orderPlaced, setOrderPlaced] = useState(false);
+  const [clientSecret, setClientSecret] = useState<string>('');
   const [formData, setFormData] = useState({
-    name: '',
+    name: profile?.name || '',
     email: '',
-    phone: '',
-    address: '',
-    city: '',
-    pincode: '',
+    phone: profile?.phone || '',
+    address: profile?.default_address || '',
+    city: profile?.city || '',
+    pincode: profile?.pincode || '',
     paymentMethod: 'cod', // cod or online
   });
   const [errors, setErrors] = useState<{[key: string]: string}>({});
+
+  useEffect(() => {
+    if (formData.paymentMethod === 'online') {
+      initializePayment();
+    }
+  }, [formData.paymentMethod]);
+
+  const initializePayment = async () => {
+    try {
+      const { clientSecret } = await createPaymentIntent(cartTotal + 40 + cartTotal * 0.05);
+      setClientSecret(clientSecret);
+    } catch (error) {
+      console.error('Error initializing payment:', error);
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -25,7 +92,6 @@ const Checkout: React.FC = () => {
       [name]: value
     }));
     
-    // Clear error for this field if it exists
     if (errors[name]) {
       setErrors(prev => {
         const newErrors = { ...prev };
@@ -46,12 +112,6 @@ const Checkout: React.FC = () => {
     const newErrors: {[key: string]: string} = {};
     
     if (!formData.name.trim()) newErrors.name = 'Name is required';
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
-    }
-    
     if (!formData.phone.trim()) {
       newErrors.phone = 'Phone number is required';
     } else if (!/^\d{10}$/.test(formData.phone.trim())) {
@@ -70,15 +130,88 @@ const Checkout: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const createOrder = async () => {
+    try {
+      // Create order
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          delivery_address: formData.address,
+          city: formData.city,
+          pincode: formData.pincode,
+          total_amount: cartTotal + 40 + cartTotal * 0.05,
+          total_calories: cartCalories,
+        })
+        .select()
+        .single();
+
+      if (orderError) throw orderError;
+
+      // Create order items
+      const orderItems = cartItems.map(item => ({
+        order_id: order.id,
+        pizza_name: item.pizza.name,
+        pizza_size: item.pizza.size,
+        crust: item.pizza.crust,
+        sauce: item.pizza.sauce,
+        toppings: item.pizza.toppings,
+        quantity: item.quantity,
+        price: item.totalPrice,
+        calories: item.totalCalories,
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+
+      if (itemsError) throw itemsError;
+
+      // Create payment transaction
+      const { error: paymentError } = await supabase
+        .from('payment_transactions')
+        .insert({
+          order_id: order.id,
+          amount: cartTotal + 40 + cartTotal * 0.05,
+          payment_method: formData.paymentMethod,
+          status: formData.paymentMethod === 'cod' ? 'pending' : 'processing',
+        });
+
+      if (paymentError) throw paymentError;
+
+      // Update user profile if needed
+      if (
+        formData.address !== profile?.default_address ||
+        formData.city !== profile?.city ||
+        formData.pincode !== profile?.pincode
+      ) {
+        await updateProfile({
+          default_address: formData.address,
+          city: formData.city,
+          pincode: formData.pincode,
+        });
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error creating order:', error);
+      return false;
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (validateForm()) {
-      // Simulate order processing
-      setTimeout(() => {
-        setOrderPlaced(true);
-        clearCart();
-      }, 1500);
+      if (formData.paymentMethod === 'cod') {
+        const success = await createOrder();
+        if (success) {
+          setOrderPlaced(true);
+          clearCart();
+        }
+      } else if (formData.paymentMethod === 'online' && clientSecret) {
+        // Payment will be handled by Stripe Elements
+        return;
+      }
     }
   };
 
@@ -147,20 +280,6 @@ const Checkout: React.FC = () => {
                       }`}
                     />
                     {errors.name && <p className="mt-1 text-red-500 text-sm">{errors.name}</p>}
-                  </div>
-                  <div>
-                    <label htmlFor="email" className="block text-gray-700 mb-1">Email</label>
-                    <input
-                      type="email"
-                      id="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-600 focus:border-transparent ${
-                        errors.email ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                    />
-                    {errors.email && <p className="mt-1 text-red-500 text-sm">{errors.email}</p>}
                   </div>
                   <div>
                     <label htmlFor="phone" className="block text-gray-700 mb-1">Phone Number</label>
@@ -281,12 +400,15 @@ const Checkout: React.FC = () => {
                         <span className="font-medium">Pay Online</span>
                       </div>
                     </div>
-                    {formData.paymentMethod === 'online' && (
-                      <div className="mt-3 text-sm text-gray-600">
-                        For this demo, online payment is simulated and no actual payment will be processed.
-                      </div>
-                    )}
                   </div>
+
+                  {formData.paymentMethod === 'online' && clientSecret && (
+                    <div className="mt-4">
+                      <Elements stripe={stripePromise} options={{ clientSecret }}>
+                        <PaymentForm clientSecret={clientSecret} />
+                      </Elements>
+                    </div>
+                  )}
                 </div>
               </div>
             </form>
@@ -347,14 +469,16 @@ const Checkout: React.FC = () => {
                 </div>
               </div>
               
-              <button 
-                type="submit"
-                onClick={handleSubmit}
-                className="w-full py-3 bg-green-700 hover:bg-green-800 text-white rounded-full flex items-center justify-center space-x-2 transition-colors"
-              >
-                <Calendar className="w-5 h-5" />
-                <span>Place Order</span>
-              </button>
+              {formData.paymentMethod === 'cod' && (
+                <button 
+                  type="submit"
+                  onClick={handleSubmit}
+                  className="w-full py-3 bg-green-700 hover:bg-green-800 text-white rounded-full flex items-center justify-center space-x-2 transition-colors"
+                >
+                  <Calendar className="w-5 h-5" />
+                  <span>Place Order</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

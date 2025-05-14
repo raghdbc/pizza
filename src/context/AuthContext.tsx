@@ -1,18 +1,25 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { User } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
 
-interface User {
+interface Profile {
   id: string;
   name: string;
-  email: string;
+  phone: string | null;
+  default_address: string | null;
+  city: string | null;
+  pincode: string | null;
 }
 
 interface AuthContextType {
   user: User | null;
+  profile: Profile | null;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
-  register: (name: string, email: string, password: string) => Promise<boolean>;
-  logout: () => void;
+  login: (email: string, password: string) => Promise<{ error: any }>;
+  register: (name: string, email: string, password: string) => Promise<{ error: any }>;
+  logout: () => Promise<void>;
   loading: boolean;
+  updateProfile: (data: Partial<Profile>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -27,82 +34,113 @@ export const useAuth = () => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is stored in localStorage (simulating persistent auth)
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setLoading(false);
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchProfile(session.user.id);
+      }
+    });
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        await fetchProfile(session.user.id);
+      } else {
+        setProfile(null);
+      }
+      setLoading(false);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
+
+  const fetchProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error) throw error;
+      setProfile(data);
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    }
+  };
 
   const login = async (email: string, password: string) => {
     try {
-      // Simulate API call
-      setLoading(true);
-      
-      // For demo purposes, we'll just check some simple validation
-      if (email === 'demo@example.com' && password === 'password') {
-        const userData = {
-          id: '1',
-          name: 'Demo User',
-          email: 'demo@example.com'
-        };
-        
-        setUser(userData);
-        localStorage.setItem('user', JSON.stringify(userData));
-        setLoading(false);
-        return true;
-      }
-      
-      setLoading(false);
-      return false;
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      return { error };
     } catch (error) {
-      setLoading(false);
-      console.error('Login error:', error);
-      return false;
+      return { error };
     }
   };
 
   const register = async (name: string, email: string, password: string) => {
     try {
-      // Simulate API call
-      setLoading(true);
-      
-      // For demo purposes
-      const userData = {
-        id: '1',
-        name,
-        email
-      };
-      
-      setUser(userData);
-      localStorage.setItem('user', JSON.stringify(userData));
-      setLoading(false);
-      return true;
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name,
+          },
+        },
+      });
+      return { error };
     } catch (error) {
-      setLoading(false);
-      console.error('Registration error:', error);
-      return false;
+      return { error };
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('user');
+  const logout = async () => {
+    await supabase.auth.signOut();
+  };
+
+  const updateProfile = async (data: Partial<Profile>) => {
+    try {
+      if (!user) throw new Error('No user');
+
+      const { error } = await supabase
+        .from('profiles')
+        .update(data)
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      setProfile(prev => prev ? { ...prev, ...data } : null);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      throw error;
+    }
   };
 
   return (
     <AuthContext.Provider
       value={{
         user,
+        profile,
         isAuthenticated: !!user,
         login,
         register,
         logout,
-        loading
+        loading,
+        updateProfile,
       }}
     >
       {children}
