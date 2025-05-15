@@ -91,3 +91,5 @@ const Customize: React.FC = () => {
     </div>
   );
 };
+
+export default Customize
