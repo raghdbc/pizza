@@ -46,9 +46,9 @@ const Customize: React.FC = () => {
           <div className="hidden lg:block">
             <div className="bg-white rounded-lg shadow-md overflow-hidden">
               <img 
-                src="https://images.pexels.com/photos/1146760/pexels-photo-1146760.jpeg"
+                src="https://images.pexels.com/photos/4193872/pexels-photo-4193872.jpeg"
                 alt="Custom Pizza" 
-                className="w-full h-64 object-cover"
+                className="w-full h-96 object-cover"
               />
               <div className="p-6">
                 <h2 className="text-xl font-bold text-green-800 mb-2">
@@ -91,5 +91,3 @@ const Customize: React.FC = () => {
     </div>
   );
 };
-
-export default Customize;
