@@ -32,6 +32,9 @@ const Navbar: React.FC = () => {
     setIsOpen(false);
   }, [location]);
 
+  // Safely get the user's first name
+  const userFirstName = user?.name?.split(' ')[0] || 'User';
+
   return (
     <nav className={`fixed w-full z-50 transition-all duration-300 ${
       isScrolled ? 'bg-white shadow-md py-2' : 'bg-transparent py-4'
@@ -53,7 +56,7 @@ const Navbar: React.FC = () => {
             {isAuthenticated ? (
               <div className="flex items-center space-x-4">
                 <span className="text-gray-700 font-medium">
-                  Hi, {user?.name.split(' ')[0]}
+                  Hi, {userFirstName}
                 </span>
                 <button 
                   onClick={logout}
@@ -123,7 +126,7 @@ const Navbar: React.FC = () => {
                 <div className="pt-2 border-t border-gray-200">
                   <div className="flex items-center justify-between">
                     <span className="text-gray-700 font-medium">
-                      Hi, {user?.name.split(' ')[0]}
+                      Hi, {userFirstName}
                     </span>
                     <Link 
                       to="/cart" 
