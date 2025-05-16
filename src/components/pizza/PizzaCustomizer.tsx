@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LeafIcon, ShoppingCart, Plus, Minus } from 'lucide-react';
-import { usePizza, Pizza, Topping } from '../../context/PizzaContext';
+import { usePizza, Pizza } from '../../context/PizzaContext';
 import { useCart } from '../../context/CartContext';
 
 interface PizzaCustomizerProps {
@@ -15,9 +15,9 @@ const PizzaCustomizer: React.FC<PizzaCustomizerProps> = ({ initialPizza }) => {
     id: 'custom-' + Date.now(),
     name: 'Custom Pizza',
     description: 'Your personalized healthy pizza creation',
-    image: 'https://images.pexels.com/photos/1146760/pexels-photo-1146760.jpeg',
-    basePrice: 200, // Base price in INR
-    baseCalories: 250, // Base calories
+    image: 'https://images.pexels.com/photos/4193872/pexels-photo-4193872.jpeg',
+    basePrice: 250,
+    baseCalories: 250,
     toppings: [],
     crust: crusts[0]?.id || '',
     sauce: sauces[0]?.id || '',
@@ -31,7 +31,6 @@ const PizzaCustomizer: React.FC<PizzaCustomizerProps> = ({ initialPizza }) => {
   const [selectedToppings, setSelectedToppings] = useState<{ [key: string]: boolean }>({});
   const [toppingQuantities, setToppingQuantities] = useState<{ [key: string]: number }>({});
   
-  // Initialize state with initial pizza if provided
   useEffect(() => {
     if (initialPizza) {
       const toppingSelections: { [key: string]: boolean } = {};
@@ -46,48 +45,45 @@ const PizzaCustomizer: React.FC<PizzaCustomizerProps> = ({ initialPizza }) => {
       setToppingQuantities(quantities);
     }
   }, [initialPizza]);
-  
+
   const handleSizeChange = (sizeId: string) => {
     setCustomPizza(prev => ({
       ...prev,
       size: sizeId
     }));
   };
-  
+
   const handleCrustChange = (crustId: string) => {
     setCustomPizza(prev => ({
       ...prev,
       crust: crustId
     }));
   };
-  
+
   const handleSauceChange = (sauceId: string) => {
     setCustomPizza(prev => ({
       ...prev,
       sauce: sauceId
     }));
   };
-  
+
   const handleToppingToggle = (toppingId: string) => {
     const newSelected = { ...selectedToppings };
     newSelected[toppingId] = !newSelected[toppingId];
     
     setSelectedToppings(newSelected);
     
-    // Initialize quantity when adding a topping
     if (newSelected[toppingId] && !toppingQuantities[toppingId]) {
       setToppingQuantities(prev => ({
         ...prev,
-        [toppingId]: 20 // Default: 20g
+        [toppingId]: 20
       }));
     }
     
-    // Update the pizza object
     updatePizzaToppings(newSelected, toppingQuantities);
   };
-  
+
   const handleToppingQuantityChange = (toppingId: string, quantity: number) => {
-    // Ensure quantity is between 10 and 70
     const newQuantity = Math.max(10, Math.min(70, quantity));
     
     setToppingQuantities(prev => ({
@@ -95,13 +91,12 @@ const PizzaCustomizer: React.FC<PizzaCustomizerProps> = ({ initialPizza }) => {
       [toppingId]: newQuantity
     }));
     
-    // Update the pizza object
     updatePizzaToppings(selectedToppings, {
       ...toppingQuantities,
       [toppingId]: newQuantity
     });
   };
-  
+
   const updatePizzaToppings = (selected: { [key: string]: boolean }, quantities: { [key: string]: number }) => {
     const newToppings = Object.keys(selected)
       .filter(id => selected[id])
@@ -116,9 +111,8 @@ const PizzaCustomizer: React.FC<PizzaCustomizerProps> = ({ initialPizza }) => {
       vegan: checkIfVegan(newToppings)
     }));
   };
-  
+
   const checkIfVegan = (pizzaToppings: { id: string; quantity: number }[]) => {
-    // Check if all selected toppings are vegan
     const nonVeganTopping = pizzaToppings.find(item => {
       const toppingData = toppings.find(t => t.id === item.id);
       return toppingData && !toppingData.vegan;
@@ -126,13 +120,12 @@ const PizzaCustomizer: React.FC<PizzaCustomizerProps> = ({ initialPizza }) => {
     
     return !nonVeganTopping;
   };
-  
+
   const handleAddToCart = () => {
     addToCart(customPizza, quantity);
-    // Reset quantity after adding to cart
     setQuantity(1);
   };
-  
+
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <h2 className="text-2xl font-bold text-green-800 mb-6">Build Your Healthy Pizza</h2>
@@ -151,7 +144,10 @@ const PizzaCustomizer: React.FC<PizzaCustomizerProps> = ({ initialPizza }) => {
                   : 'border-gray-300 text-gray-700 hover:bg-gray-50'
               } transition-colors`}
             >
-              {size.name}
+              <div className="font-medium">{size.name}</div>
+              <div className="text-xs text-gray-500">
+                ₹{Math.round(customPizza.basePrice * size.multiplier)}
+              </div>
             </button>
           ))}
         </div>
@@ -172,7 +168,9 @@ const PizzaCustomizer: React.FC<PizzaCustomizerProps> = ({ initialPizza }) => {
               } transition-colors`}
             >
               <div className="font-medium">{crust.name}</div>
-              <div className="text-xs text-gray-500">{crust.calories} Kcal</div>
+              <div className="text-xs text-gray-500">
+                ₹{crust.price} • {crust.calories} Kcal
+              </div>
             </button>
           ))}
         </div>
@@ -193,7 +191,9 @@ const PizzaCustomizer: React.FC<PizzaCustomizerProps> = ({ initialPizza }) => {
               } transition-colors`}
             >
               <div className="font-medium">{sauce.name}</div>
-              <div className="text-xs text-gray-500">{sauce.calories} Kcal</div>
+              <div className="text-xs text-gray-500">
+                ₹{sauce.price} • {sauce.calories} Kcal
+              </div>
             </button>
           ))}
         </div>
@@ -224,7 +224,7 @@ const PizzaCustomizer: React.FC<PizzaCustomizerProps> = ({ initialPizza }) => {
                     )}
                   </span>
                   <div className="text-xs text-gray-500">
-                    {topping.calories / 10} Kcal/10g · ₹{topping.pricePerGram * 10}/10g
+                    ₹{(topping.pricePerGram * 10).toFixed(1)}/10g • {topping.calories / 10} Kcal/10g
                   </div>
                 </label>
               </div>

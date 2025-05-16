@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { LeafIcon, Plus, Minus, ShoppingCart } from 'lucide-react';
+import React from 'react';
+import { ShoppingCart } from 'lucide-react';
 import { Pizza } from '../../context/PizzaContext';
 import { useCart } from '../../context/CartContext';
 
@@ -10,13 +9,10 @@ interface PizzaCardProps {
 }
 
 const PizzaCard: React.FC<PizzaCardProps> = ({ pizza, detailed = false }) => {
-  const [quantity, setQuantity] = useState(1);
   const { calculatePizzaPrice, calculatePizzaCalories, addToCart } = useCart();
 
   const handleAddToCart = () => {
-    addToCart(pizza, quantity);
-    // Reset quantity after adding to cart
-    setQuantity(1);
+    addToCart(pizza, 1);
   };
 
   return (
@@ -29,8 +25,7 @@ const PizzaCard: React.FC<PizzaCardProps> = ({ pizza, detailed = false }) => {
           className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
         />
         {pizza.vegan && (
-          <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full flex items-center">
-            <LeafIcon className="w-3 h-3 mr-1" />
+          <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full">
             Vegan
           </div>
         )}
@@ -57,53 +52,17 @@ const PizzaCard: React.FC<PizzaCardProps> = ({ pizza, detailed = false }) => {
               <span className="ml-2">{calculatePizzaCalories(pizza)} Kcal</span>
             </div>
           </div>
-          
-          {detailed && (
-            <div className="flex items-center space-x-2">
-              <button 
-                onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
-                className="p-1 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-              >
-                <Minus className="w-4 h-4 text-gray-700" />
-              </button>
-              <span className="font-medium">{quantity}</span>
-              <button 
-                onClick={() => setQuantity(prev => prev + 1)}
-                className="p-1 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-              >
-                <Plus className="w-4 h-4 text-gray-700" />
-              </button>
-            </div>
-          )}
         </div>
 
-        {/* Action Buttons */}
-        <div className="mt-4 flex space-x-2">
-          {detailed ? (
-            <button
-              onClick={handleAddToCart}
-              className="flex-grow py-2 bg-green-700 hover:bg-green-800 text-white rounded-full flex items-center justify-center space-x-2 transition-colors"
-            >
-              <ShoppingCart className="w-4 h-4" />
-              <span>Add to Cart</span>
-            </button>
-          ) : (
-            <>
-              <Link 
-                to={`/customize?id=${pizza.id}`}
-                className="flex-grow py-2 bg-white border border-green-700 text-green-700 hover:bg-green-50 rounded-full text-center transition-colors"
-              >
-                Customize
-              </Link>
-              <button
-                onClick={handleAddToCart}
-                className="flex-grow py-2 bg-green-700 hover:bg-green-800 text-white rounded-full flex items-center justify-center transition-colors"
-              >
-                <ShoppingCart className="w-4 h-4 mr-1" />
-                <span>Add</span>
-              </button>
-            </>
-          )}
+        {/* Action Button */}
+        <div className="mt-4">
+          <button
+            onClick={handleAddToCart}
+            className="w-full py-2 bg-green-700 hover:bg-green-800 text-white rounded-full flex items-center justify-center space-x-2 transition-colors"
+          >
+            <ShoppingCart className="w-4 h-4" />
+            <span>Add to Cart</span>
+          </button>
         </div>
       </div>
     </div>
