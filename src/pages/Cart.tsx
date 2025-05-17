@@ -2,10 +2,20 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 
 const Cart: React.FC = () => {
   const { cartItems, removeFromCart, updateQuantity, cartTotal, cartCalories, clearCart } = useCart();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
+
+  const handleCheckout = () => {
+    if (!isAuthenticated) {
+      navigate('/login');
+    } else {
+      navigate('/checkout');
+    }
+  };
 
   if (cartItems.length === 0) {
     return (
@@ -171,13 +181,13 @@ const Cart: React.FC = () => {
                 </div>
               </div>
               
-              <Link 
-                to="/checkout" 
+              <button 
+                onClick={handleCheckout}
                 className="w-full py-3 bg-green-700 hover:bg-green-800 text-white rounded-full flex items-center justify-center space-x-2 transition-colors"
               >
                 <ShoppingBag className="w-5 h-5" />
                 <span>Proceed to Checkout</span>
-              </Link>
+              </button>
               
               <div className="mt-4">
                 <Link 
