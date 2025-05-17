@@ -13,6 +13,8 @@ const PaymentForm = ({ clientSecret }: { clientSecret: string }) => {
   const elements = useElements();
   const [error, setError] = useState<string>('');
   const [processing, setProcessing] = useState(false);
+  const { clearCart } = useCart();
+  const navigate = useNavigate();
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -33,6 +35,10 @@ const PaymentForm = ({ clientSecret }: { clientSecret: string }) => {
     if (stripeError) {
       setError(stripeError.message || 'An error occurred');
       setProcessing(false);
+    } else {
+      // Payment successful
+      clearCart();
+      navigate('/order-confirmation');
     }
   };
 
@@ -55,7 +61,7 @@ const PaymentForm = ({ clientSecret }: { clientSecret: string }) => {
 
 const Checkout: React.FC = () => {
   const { cartItems, cartTotal, cartCalories, clearCart } = useCart();
-  const { profile, updateProfile } = useAuth();
+  const { user, profile, updateProfile } = useAuth();
   const navigate = useNavigate();
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [clientSecret, setClientSecret] = useState<string>('');
@@ -78,7 +84,8 @@ const Checkout: React.FC = () => {
 
   const initializePayment = async () => {
     try {
-      const { clientSecret } = await createPaymentIntent(cartTotal + 40 + cartTotal * 0.05);
+      const totalAmount = cartTotal + 40 + (cartTotal * 0.05);
+      const { clientSecret } = await createPaymentIntent(Math.round(totalAmount * 100) / 100);
       setClientSecret(clientSecret);
     } catch (error) {
       console.error('Error initializing payment:', error);
@@ -131,16 +138,20 @@ const Checkout: React.FC = () => {
   };
 
   const createOrder = async () => {
+    if (!user) return false;
+
     try {
       // Create order
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
+          user_id: user.id,
           delivery_address: formData.address,
           city: formData.city,
           pincode: formData.pincode,
           total_amount: cartTotal + 40 + cartTotal * 0.05,
           total_calories: cartCalories,
+          status: formData.paymentMethod === 'cod' ? 'pending' : 'processing'
         })
         .select()
         .single();
@@ -185,6 +196,8 @@ const Checkout: React.FC = () => {
         formData.pincode !== profile?.pincode
       ) {
         await updateProfile({
+          name: formData.name,
+          phone: formData.phone,
           default_address: formData.address,
           city: formData.city,
           pincode: formData.pincode,
@@ -207,6 +220,7 @@ const Checkout: React.FC = () => {
         if (success) {
           setOrderPlaced(true);
           clearCart();
+          navigate('/order-confirmation');
         }
       } else if (formData.paymentMethod === 'online' && clientSecret) {
         // Payment will be handled by Stripe Elements

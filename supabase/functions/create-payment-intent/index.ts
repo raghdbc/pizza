@@ -18,6 +18,10 @@ serve(async (req) => {
   try {
     const { amount } = await req.json();
 
+    if (!amount || isNaN(amount) || amount <= 0) {
+      throw new Error('Invalid amount provided');
+    }
+
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100), // Convert to cents
       currency: 'inr',
@@ -34,6 +38,7 @@ serve(async (req) => {
       },
     );
   } catch (error) {
+    console.error('Payment intent error:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
       {
