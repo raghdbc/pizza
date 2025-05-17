@@ -4,7 +4,7 @@ import { loadStripe } from '@stripe/stripe-js';
 export const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 // Create a payment intent
-export const createPaymentIntent = async (amount: number) => {
+export const createPaymentIntent = async (amountInCents: number) => {
   try {
     const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-payment-intent`, {
       method: 'POST',
@@ -12,7 +12,7 @@ export const createPaymentIntent = async (amount: number) => {
         'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ amount }),
+      body: JSON.stringify({ amount: amountInCents }),
     });
 
     if (!response.ok) {

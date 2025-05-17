@@ -85,7 +85,9 @@ const Checkout: React.FC = () => {
   const initializePayment = async () => {
     try {
       const totalAmount = cartTotal + 40 + (cartTotal * 0.05);
-      const { clientSecret } = await createPaymentIntent(Math.round(totalAmount * 100) / 100);
+      // Convert amount to cents and ensure it's an integer
+      const amountInCents = Math.round(totalAmount * 100);
+      const { clientSecret } = await createPaymentIntent(amountInCents);
       setClientSecret(clientSecret);
     } catch (error) {
       console.error('Error initializing payment:', error);
@@ -138,7 +140,7 @@ const Checkout: React.FC = () => {
   };
 
   const createOrder = async () => {
-    if (!user) return false;
+    if (!user?.id) return false;
 
     try {
       // Create order
