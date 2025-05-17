@@ -1,70 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle, CreditCard, Home, Truck, MapPin, Clock, Calendar } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { supabase } from '../lib/supabase';
-import { stripePromise, createPaymentIntent } from '../lib/stripe';
-import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
-
-// Payment Form Component
-const PaymentForm = ({ clientSecret }: { clientSecret: string }) => {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [error, setError] = useState<string>('');
-  const [processing, setProcessing] = useState(false);
-  const { clearCart } = useCart();
-  const navigate = useNavigate();
-
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-
-    if (!stripe || !elements) {
-      return;
-    }
-
-    setProcessing(true);
-
-    const { error: stripeError } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: `${window.location.origin}/order-confirmation`,
-      },
-    });
-
-    if (stripeError) {
-      setError(stripeError.message || 'An error occurred');
-      setProcessing(false);
-    } else {
-      // Payment successful
-      clearCart();
-      navigate('/order-confirmation');
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit}>
-      <PaymentElement />
-      {error && <div className="text-red-600 mt-2">{error}</div>}
-      <button
-        type="submit"
-        disabled={!stripe || processing}
-        className={`w-full mt-4 py-3 bg-green-700 hover:bg-green-800 text-white rounded-full flex items-center justify-center space-x-2 transition-colors ${
-          processing ? 'opacity-70 cursor-not-allowed' : ''
-        }`}
-      >
-        {processing ? 'Processing...' : 'Pay Now'}
-      </button>
-    </form>
-  );
-};
 
 const Checkout: React.FC = () => {
   const { cartItems, cartTotal, cartCalories, clearCart } = useCart();
-  const { user, profile, updateProfile } = useAuth();
+  const { profile, updateProfile } = useAuth();
   const navigate = useNavigate();
   const [orderPlaced, setOrderPlaced] = useState(false);
-  const [clientSecret, setClientSecret] = useState<string>('');
   const [formData, setFormData] = useState({
     name: profile?.name || '',
     email: '',
@@ -75,24 +19,6 @@ const Checkout: React.FC = () => {
     paymentMethod: 'cod', // cod or online
   });
   const [errors, setErrors] = useState<{[key: string]: string}>({});
-
-  useEffect(() => {
-    if (formData.paymentMethod === 'online') {
-      initializePayment();
-    }
-  }, [formData.paymentMethod]);
-
-  const initializePayment = async () => {
-    try {
-      const totalAmount = cartTotal + 40 + (cartTotal * 0.05);
-      // Convert amount to cents and ensure it's an integer
-      const amountInCents = Math.round(totalAmount * 100);
-      const { clientSecret } = await createPaymentIntent(amountInCents);
-      setClientSecret(clientSecret);
-    } catch (error) {
-      console.error('Error initializing payment:', error);
-    }
-  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -139,95 +65,14 @@ const Checkout: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const createOrder = async () => {
-    if (!user?.id) return false;
-
-    try {
-      // Create order
-      const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .insert({
-          user_id: user.id,
-          delivery_address: formData.address,
-          city: formData.city,
-          pincode: formData.pincode,
-          total_amount: cartTotal + 40 + cartTotal * 0.05,
-          total_calories: cartCalories,
-          status: formData.paymentMethod === 'cod' ? 'pending' : 'processing'
-        })
-        .select()
-        .single();
-
-      if (orderError) throw orderError;
-
-      // Create order items
-      const orderItems = cartItems.map(item => ({
-        order_id: order.id,
-        pizza_name: item.pizza.name,
-        pizza_size: item.pizza.size,
-        crust: item.pizza.crust,
-        sauce: item.pizza.sauce,
-        toppings: item.pizza.toppings,
-        quantity: item.quantity,
-        price: item.totalPrice,
-        calories: item.totalCalories,
-      }));
-
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItems);
-
-      if (itemsError) throw itemsError;
-
-      // Create payment transaction
-      const { error: paymentError } = await supabase
-        .from('payment_transactions')
-        .insert({
-          order_id: order.id,
-          amount: cartTotal + 40 + cartTotal * 0.05,
-          payment_method: formData.paymentMethod,
-          status: formData.paymentMethod === 'cod' ? 'pending' : 'processing',
-        });
-
-      if (paymentError) throw paymentError;
-
-      // Update user profile if needed
-      if (
-        formData.address !== profile?.default_address ||
-        formData.city !== profile?.city ||
-        formData.pincode !== profile?.pincode
-      ) {
-        await updateProfile({
-          name: formData.name,
-          phone: formData.phone,
-          default_address: formData.address,
-          city: formData.city,
-          pincode: formData.pincode,
-        });
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Error creating order:', error);
-      return false;
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (validateForm()) {
-      if (formData.paymentMethod === 'cod') {
-        const success = await createOrder();
-        if (success) {
-          setOrderPlaced(true);
-          clearCart();
-          navigate('/order-confirmation');
-        }
-      } else if (formData.paymentMethod === 'online' && clientSecret) {
-        // Payment will be handled by Stripe Elements
-        return;
-      }
+      // For demo purposes, just show success and redirect
+      setOrderPlaced(true);
+      clearCart();
+      navigate('/order-confirmation');
     }
   };
 
@@ -417,14 +262,6 @@ const Checkout: React.FC = () => {
                       </div>
                     </div>
                   </div>
-
-                  {formData.paymentMethod === 'online' && clientSecret && (
-                    <div className="mt-4">
-                      <Elements stripe={stripePromise} options={{ clientSecret }}>
-                        <PaymentForm clientSecret={clientSecret} />
-                      </Elements>
-                    </div>
-                  )}
                 </div>
               </div>
             </form>
@@ -485,16 +322,14 @@ const Checkout: React.FC = () => {
                 </div>
               </div>
               
-              {formData.paymentMethod === 'cod' && (
-                <button 
-                  type="submit"
-                  onClick={handleSubmit}
-                  className="w-full py-3 bg-green-700 hover:bg-green-800 text-white rounded-full flex items-center justify-center space-x-2 transition-colors"
-                >
-                  <Calendar className="w-5 h-5" />
-                  <span>Place Order</span>
-                </button>
-              )}
+              <button 
+                type="submit"
+                onClick={handleSubmit}
+                className="w-full py-3 bg-green-700 hover:bg-green-800 text-white rounded-full flex items-center justify-center space-x-2 transition-colors"
+              >
+                <Calendar className="w-5 h-5" />
+                <span>Place Order</span>
+              </button>
             </div>
           </div>
         </div>
