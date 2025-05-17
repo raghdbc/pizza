@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Leaf, ShoppingCart, Menu, X, LogIn, LogOut, User } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
@@ -10,6 +10,7 @@ const Navbar: React.FC = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const { cartItems } = useCart();
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Handle scroll effect
   useEffect(() => {
@@ -35,6 +36,11 @@ const Navbar: React.FC = () => {
   // Safely get the user's first name
   const userFirstName = user?.name?.split(' ')[0] || 'User';
 
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
+  };
+
   return (
     <nav className={`fixed w-full z-50 transition-all duration-300 ${
       isScrolled ? 'bg-white shadow-md py-2' : 'bg-transparent py-4'
@@ -59,7 +65,7 @@ const Navbar: React.FC = () => {
                   Hi, {userFirstName}
                 </span>
                 <button 
-                  onClick={logout}
+                  onClick={handleLogout}
                   className="flex items-center text-gray-700 hover:text-red-600 transition-colors"
                 >
                   <LogOut className="w-5 h-5 mr-1" />
@@ -142,7 +148,7 @@ const Navbar: React.FC = () => {
                   </div>
                 </div>
                 <button 
-                  onClick={logout}
+                  onClick={handleLogout}
                   className="flex items-center py-2 text-gray-700 hover:text-red-600"
                 >
                   <LogOut className="w-5 h-5 mr-2" />
@@ -173,5 +179,3 @@ const Navbar: React.FC = () => {
     </nav>
   );
 };
-
-export default Navbar;
