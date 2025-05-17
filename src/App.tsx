@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import { PizzaProvider } from './context/PizzaContext';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
@@ -43,6 +44,31 @@ function App() {
               </main>
               <Footer />
             </div>
+            <Toaster
+              position="top-right"
+              toastOptions={{
+                duration: 3000,
+                style: {
+                  background: '#fff',
+                  color: '#333',
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                  borderRadius: '0.5rem',
+                  padding: '1rem',
+                },
+                success: {
+                  iconTheme: {
+                    primary: '#16a34a',
+                    secondary: '#fff',
+                  },
+                },
+                error: {
+                  iconTheme: {
+                    primary: '#dc2626',
+                    secondary: '#fff',
+                  },
+                },
+              }}
+            />
           </Router>
         </CartProvider>
       </PizzaProvider>

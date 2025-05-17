@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { toast } from 'react-hot-toast';
 import { Pizza, usePizza, Crust, Sauce, Size, Topping } from './PizzaContext';
 
 interface CartItem {
@@ -76,6 +77,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       totalPrice += toppingData.pricePerGram * topping.quantity;
     });
     
+    // Apply 20% markup for customized pizzas
+    if (pizza.id.startsWith('custom-')) {
+      totalPrice *= 1.2;
+    }
+    
     return parseFloat(totalPrice.toFixed(2));
   };
 
@@ -95,7 +101,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Add topping calories
     pizza.toppings.forEach(topping => {
       const toppingData = toppings.find(t => t.id === topping.id) as Topping;
-      totalCalories += toppingData.calories * topping.quantity / 10; // assuming quantity is in grams
+      totalCalories += toppingData.calories * topping.quantity / 10;
     });
     
     return Math.round(totalCalories);
@@ -127,10 +133,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       
       setCartItems(updatedItems);
+      toast.success(`Updated ${pizza.name} quantity in cart`);
     } else {
       // Add new item
       const newItem: CartItem = {
-        id: `${pizza.id}-${Date.now()}`, // Unique ID
+        id: `${pizza.id}-${Date.now()}`,
         pizza,
         quantity,
         totalPrice,
@@ -138,11 +145,16 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       
       setCartItems([...cartItems, newItem]);
+      toast.success(`Added ${pizza.name} to cart`);
     }
   };
 
   const removeFromCart = (itemId: string) => {
-    setCartItems(cartItems.filter(item => item.id !== itemId));
+    const itemToRemove = cartItems.find(item => item.id === itemId);
+    if (itemToRemove) {
+      setCartItems(cartItems.filter(item => item.id !== itemId));
+      toast.success(`Removed ${itemToRemove.pizza.name} from cart`);
+    }
   };
 
   const updateQuantity = (itemId: string, quantity: number) => {
@@ -167,10 +179,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
     
     setCartItems(updatedItems);
+    toast.success('Cart updated');
   };
 
   const clearCart = () => {
     setCartItems([]);
+    toast.success('Cart cleared');
   };
 
   return (

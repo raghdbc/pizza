@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { User } from '@supabase/supabase-js';
+import { toast } from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
 
 interface Profile {
@@ -77,6 +78,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setProfile(data);
     } catch (error) {
       console.error('Error fetching profile:', error);
+      toast.error('Failed to fetch profile');
     }
   };
 
@@ -87,10 +89,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        toast.error(error.message);
+        return { error };
+      }
+
+      toast.success('Welcome back!');
       return { error: null };
     } catch (error) {
       console.error('Login error:', error);
+      toast.error('Failed to log in');
       return { error };
     }
   };
@@ -107,7 +115,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        toast.error(error.message);
+        return { error };
+      }
 
       // Create profile immediately after successful registration
       if (data.user) {
@@ -122,12 +133,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             },
           ]);
 
-        if (profileError) throw profileError;
+        if (profileError) {
+          toast.error('Failed to create profile');
+          return { error: profileError };
+        }
       }
 
+      toast.success('Welcome to Nature\'s Wheel!');
       return { error: null };
     } catch (error) {
       console.error('Registration error:', error);
+      toast.error('Failed to register');
       return { error };
     }
   };
@@ -138,8 +154,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
       setUser(null);
       setProfile(null);
+      toast.success('Logged out successfully');
     } catch (error) {
       console.error('Logout error:', error);
+      toast.error('Failed to log out');
     }
   };
 
@@ -158,8 +176,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
 
       setProfile(prev => prev ? { ...prev, ...data } : null);
+      toast.success('Profile updated successfully');
     } catch (error) {
       console.error('Error updating profile:', error);
+      toast.error('Failed to update profile');
       throw error;
     }
   };
