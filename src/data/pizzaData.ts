@@ -250,7 +250,7 @@ export const pizzaData: Pizza[] = [
     id: 'ragi-special',
     name: 'Ragi Special',
     description: 'Our signature ragi crust topped with mushrooms, corn, and bell peppers. A calcium-rich, healthy option.',
-    image: 'https://images.pexels.com/photos/7813549/pexels-photo-7813549.jpeg',
+    image: 'https://mytastycurry.com/wp-content/uploads/2020/02/Ragi-crust-pizza.jpg',
     basePrice: 290,
     baseCalories: 220,
     toppings: [
