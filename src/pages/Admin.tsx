@@ -36,11 +36,8 @@ const Admin: React.FC = () => {
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
-
-  // Simulated admin check - in production, this should be a proper role check
-  const isAdmin = user?.email === 'admin@example.com';
 
   useEffect(() => {
     if (!isAdmin) {
