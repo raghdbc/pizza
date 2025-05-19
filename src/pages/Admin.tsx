@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronDown, ChevronUp, Search, Filter, RefreshCw, Clock, MapPin, CreditCard, Package, User, Phone } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import { format } from 'date-fns';
+import { toast } from 'react-hot-toast';
 
 interface Order {
   id: string;
@@ -45,6 +47,26 @@ const Admin: React.FC = () => {
       return;
     }
     fetchOrders();
+
+    // Set up real-time subscription
+    const ordersSubscription = supabase
+      .channel('orders_channel')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders'
+        },
+        () => {
+          fetchOrders();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      ordersSubscription.unsubscribe();
+    };
   }, [isAdmin]);
 
   const fetchOrders = async () => {
@@ -72,8 +94,10 @@ const Admin: React.FC = () => {
 
       if (error) throw error;
       setOrders(data || []);
+      toast.success('Orders updated');
     } catch (error) {
       console.error('Error fetching orders:', error);
+      toast.error('Failed to fetch orders');
     } finally {
       setLoading(false);
     }
@@ -87,9 +111,11 @@ const Admin: React.FC = () => {
         .eq('id', orderId);
 
       if (error) throw error;
+      toast.success(`Order status updated to ${newStatus}`);
       fetchOrders();
     } catch (error) {
       console.error('Error updating order status:', error);
+      toast.error('Failed to update order status');
     }
   };
 
@@ -124,13 +150,7 @@ const Admin: React.FC = () => {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return format(new Date(dateString), 'MMM d, yyyy h:mm a');
   };
 
   if (!isAdmin) {
