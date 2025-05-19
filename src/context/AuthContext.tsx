@@ -88,7 +88,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        return { error };
+      }
 
       if (data.user) {
         await fetchProfile(data.user.id);
@@ -98,7 +100,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { error: null };
     } catch (error) {
       console.error('Login error:', error);
-      toast.error('Failed to log in');
       return { error };
     }
   };
