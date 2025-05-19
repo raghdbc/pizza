@@ -13,6 +13,7 @@ import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import Admin from './pages/Admin';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
 function App() {
@@ -36,6 +37,11 @@ function App() {
                   <Route path="/checkout" element={
                     <ProtectedRoute>
                       <Checkout />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/admin" element={
+                    <ProtectedRoute>
+                      <Admin />
                     </ProtectedRoute>
                   } />
                   <Route path="/login" element={<Login />} />
