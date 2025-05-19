@@ -156,15 +156,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('Attempting logout');
       const { error } = await supabase.auth.signOut();
-      if (error) throw error;
       
+      if (error) {
+        console.error('Logout error:', error);
+        toast.error('Failed to log out');
+        throw error;
+      }
+      
+      // Clear all auth-related state
       setUser(null);
       setProfile(null);
       setIsAdmin(false);
+      
+      // Clear any stored session
+      localStorage.removeItem('supabase.auth.token');
+      
       toast.success('Logged out successfully');
     } catch (error) {
       console.error('Logout error:', error);
       toast.error('Failed to log out');
+      throw error;
     }
   };
 
