@@ -42,6 +42,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     // Check current session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session check:', session?.user);
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchProfile(session.user.id);
@@ -51,6 +52,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state change:', event, session?.user);
       setUser(session?.user ?? null);
       if (session?.user) {
         await fetchProfile(session.user.id);
@@ -74,6 +76,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single();
 
       if (error) throw error;
+      console.log('Fetched profile:', data);
       setProfile(data);
     } catch (error) {
       console.error('Error fetching profile:', error);
@@ -83,16 +86,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     try {
+      console.log('Attempting login for:', email);
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
+        console.error('Login error:', error);
         return { error };
       }
 
       if (data.user) {
+        console.log('Login successful:', data.user);
         await fetchProfile(data.user.id);
         toast.success('Welcome back!');
       }
@@ -106,6 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const register = async (name: string, email: string, password: string) => {
     try {
+      console.log('Attempting registration for:', email);
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -119,6 +126,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
 
       if (data.user) {
+        console.log('Registration successful:', data.user);
         toast.success('Registration successful! Please verify your email.');
       }
 
@@ -132,6 +140,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
+      console.log('Attempting logout');
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       
@@ -165,6 +174,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const isAdmin = user?.email?.endsWith('@natureswheel.com') ?? false;
+  console.log('Is admin check:', { email: user?.email, isAdmin });
 
   return (
     <AuthContext.Provider
