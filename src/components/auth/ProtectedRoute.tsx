@@ -8,20 +8,22 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requireAdmin = false }) => {
-  const { isAuthenticated, isAdmin, loading, user } = useAuth();
+  const { isAuthenticated, isAdmin, loading } = useAuth();
 
   console.log('ProtectedRoute check:', {
     isAuthenticated,
     isAdmin,
     loading,
-    userEmail: user?.email,
     requireAdmin
   });
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-700"></div>
+      <div className="min-h-screen flex justify-center items-center bg-green-50">
+        <div className="bg-white p-8 rounded-lg shadow-md">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-700"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
       </div>
     );
   }
@@ -38,5 +40,3 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requireAdmin 
 
   return <>{children}</>;
 };
-
-export default ProtectedRoute;

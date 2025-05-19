@@ -38,12 +38,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  const checkIsAdmin = (email: string | undefined) => {
+    return email?.endsWith('@natureswheel.com') ?? false;
+  };
 
   useEffect(() => {
     // Check current session
     supabase.auth.getSession().then(({ data: { session } }) => {
       console.log('Initial session check:', session?.user);
       setUser(session?.user ?? null);
+      setIsAdmin(checkIsAdmin(session?.user?.email));
       if (session?.user) {
         fetchProfile(session.user.id);
       }
@@ -54,6 +60,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state change:', event, session?.user);
       setUser(session?.user ?? null);
+      setIsAdmin(checkIsAdmin(session?.user?.email));
       if (session?.user) {
         await fetchProfile(session.user.id);
       } else {
@@ -94,11 +101,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) {
         console.error('Login error:', error);
+        toast.error(error.message);
         return { error };
       }
 
       if (data.user) {
         console.log('Login successful:', data.user);
+        setIsAdmin(checkIsAdmin(data.user.email));
         await fetchProfile(data.user.id);
         toast.success('Welcome back!');
       }
@@ -106,6 +115,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { error: null };
     } catch (error) {
       console.error('Login error:', error);
+      toast.error('Failed to login');
       return { error };
     }
   };
@@ -123,10 +133,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        toast.error(error.message);
+        throw error;
+      }
 
       if (data.user) {
         console.log('Registration successful:', data.user);
+        setIsAdmin(checkIsAdmin(data.user.email));
         toast.success('Registration successful! Please verify your email.');
       }
 
@@ -146,6 +160,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       setUser(null);
       setProfile(null);
+      setIsAdmin(false);
       toast.success('Logged out successfully');
     } catch (error) {
       console.error('Logout error:', error);
@@ -172,9 +187,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw error;
     }
   };
-
-  const isAdmin = user?.email?.endsWith('@natureswheel.com') ?? false;
-  console.log('Is admin check:', { email: user?.email, isAdmin });
 
   return (
     <AuthContext.Provider
